@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 
 interface MobileControlsProps {
@@ -8,14 +8,13 @@ interface MobileControlsProps {
 }
 
 export default function MobileControls({ onDirectionChange }: MobileControlsProps): JSX.Element {
-  const [isDragging, setIsDragging] = useState<boolean>(false)
+  const [isDragging, setIsDragging] = useState(false)
   const joystickRef = useRef<HTMLDivElement>(null)
   const knobRef = useRef<HTMLDivElement>(null)
   const centerRef = useRef<{ x: number; y: number } | null>(null)
 
   const handleStart = (clientX: number, clientY: number): void => {
     if (!joystickRef.current) return
-    
     setIsDragging(true)
     const rect = joystickRef.current.getBoundingClientRect()
     centerRef.current = {
@@ -32,16 +31,14 @@ export default function MobileControls({ onDirectionChange }: MobileControlsProp
     const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY)
     const maxDistance = 40
 
-    // Constrain knob to circle
     const constrainedDistance = Math.min(distance, maxDistance)
     const angle = Math.atan2(deltaY, deltaX)
-    
+
     const knobX = Math.cos(angle) * constrainedDistance
     const knobY = Math.sin(angle) * constrainedDistance
 
     knobRef.current.style.transform = `translate(${knobX}px, ${knobY}px)`
 
-    // Determine direction based on angle
     if (constrainedDistance > 20) {
       const degrees = (angle * 180) / Math.PI
       const normalizedDegrees = ((degrees + 360) % 360)
@@ -101,17 +98,20 @@ export default function MobileControls({ onDirectionChange }: MobileControlsProp
     handleEnd()
   }
 
-  // Add global mouse event listeners when dragging
-  if (typeof window !== 'undefined' && isDragging) {
-    document.addEventListener('mousemove', handleMouseMove)
-    document.addEventListener('mouseup', handleMouseUp)
-  }
-
-  // Cleanup listeners
-  if (typeof window !== 'undefined' && !isDragging) {
-    document.removeEventListener('mousemove', handleMouseMove)
-    document.removeEventListener('mouseup', handleMouseUp)
-  }
+  // Attach/detach mouse listeners when dragging
+  useEffect(() => {
+    if (isDragging) {
+      document.addEventListener('mousemove', handleMouseMove)
+      document.addEventListener('mouseup', handleMouseUp)
+    } else {
+      document.removeEventListener('mousemove', handleMouseMove)
+      document.removeEventListener('mouseup', handleMouseUp)
+    }
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove)
+      document.removeEventListener('mouseup', handleMouseUp)
+    }
+  }, [isDragging])
 
   return (
     <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 flex items-center justify-center space-x-8 z-50">
